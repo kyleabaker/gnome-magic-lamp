@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Enable verbose mode to see what's going on
+set -x
+
+# Update npm
+npm update
+npm upgrade
+npm audit fix
+
+# Update npm packages
+# npm install -g npm-check-updates
+# ncu -u
+
+# Update dependencies
+npm install
+
+# Clean code
+npm run format

@@ -1,0 +1,46 @@
+# === Node & JavaScript tools ===
+node_modules/
+package-lock.json
+.package-lock.json
+npm-debug.log*
+yarn-error.log
+dist/
+
+# === Build output (if applicable) ===
+*.o
+*.so
+*.lo
+*.la
+*.a
+*.pyc
+*.pyo
+*.pyd
+
+# === GNOME Shell extension runtime ===
+metadata.json~
+schemas/gschemas.compiled
+~/.local/share/gnome-shell/extensions/*
+
+# === Logs and crash dumps ===
+*.log
+*.bak
+*.swp
+*.swo
+*.tmp
+core
+
+# === VS Code / JetBrains IDEs ===
+.vscode/
+.idea/
+*.code-workspace
+
+# === macOS & Linux system files ===
+.DS_Store
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# === Test artifacts ===
+coverage/
+*.lcov
+test-results/

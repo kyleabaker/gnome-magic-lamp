@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Enable verbose mode to see what's going on
+set -x
+
+# Clean the code
+npm run format
+
+# UUID=$(jq -r .uuid metadata.json)
+# ZIPNAME="$UUID.zip"
+
+# Compile the schema
+glib-compile-schemas schemas/
+
+# Make dist folder
+# mkdir -p ./dist
+
+# Build zip, excluding unnecessary files
+# zip -r "../$ZIPNAME" * -x "*.git*" -x "node_modules/*" -x "dist/*"
+# echo "Packaged as $ZIPNAME"
+
+# Install and enable
+# gnome-extensions install $ZIPNAME
+# gnome-extensions enable $UUID

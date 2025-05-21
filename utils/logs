@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Check if the Gnome Shell extension is enabled or not, and why.
+gnome-extensions info gnome-magic-lamp@kyleabaker.github.com
+
+# GNOME Shell logs
+journalctl /usr/bin/gnome-shell -f

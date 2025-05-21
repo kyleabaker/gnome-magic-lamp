@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Create extensions folder if it doesn't exist and create symlink to root folder
+mkdir -p ~/.local/share/gnome-shell/extensions
+ln -s "$PWD" ~/.local/share/gnome-shell/extensions/gnome-magic-lamp@kyleabaker.github.com

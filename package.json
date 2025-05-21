@@ -1,0 +1,28 @@
+{
+  "name": "gnome-wobbly-windows",
+  "version": "1.0.0",
+  "description": "Wobbly windows effect for GNOME Shell. Mimics the Compiz plugin engine to render the Wobby Windows feature.",
+  "main": "extension.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "prettier --write '**/*.{js,ts,xml,html,json,css,scss,yaml,yml,md}'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kyleabaker/gnome-wobbly-windows.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kyleabaker/gnome-wobbly-windows/issues"
+  },
+  "homepage": "https://github.com/kyleabaker/gnome-wobbly-windows#readme",
+  "devDependencies": {
+    "@prettier/plugin-xml": "^3.4.1",
+    "prettier": "^3.5.3"
+  },
+  "dependencies": {
+    "npm-check-updates": "^18.0.1"
+  }
+}
