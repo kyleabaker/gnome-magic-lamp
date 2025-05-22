@@ -26,45 +26,86 @@
 'use strict';
 
 import GObject from 'gi://GObject';
-
+import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { AbstractCommonMagicLampEffect } from '../abstract/common.js';
+import { easeOutCubic } from '../utils/common.js';
 
-import { AbstractCommonMagicLampEffect } from '../abstract/common-magic-lamp.js';
-
+/**
+ * MagicLampMinimizeEffect
+ * Handles the deformation effect when minimizing a window.
+ */
 export class MagicLampMinimizeEffect extends AbstractCommonMagicLampEffect {
   static {
     GObject.registerClass(this);
   }
 
+  /**
+   * Initializes the minimize effect.
+   * @param {Object} [params={}] - Optional parameters.
+   */
   _init(params = {}) {
     super._init(params);
 
     this.k = 0;
     this.j = 0;
     this.isMinimizeEffect = true;
+
+    this.lastRedraw = 0;
+    this.MIN_FRAME_INTERVAL = 8; // ~120fps
   }
 
+  /**
+   * Called when the effect animation completes.
+   * Restores original GNOME Shell behavior for minimize.
+   * @param {Clutter.Actor} actor - The affected actor.
+   */
   destroy_actor(actor) {
-    Main.wm._shellwm.original_completed_minimize(actor);
+    if (Main.wm?._shellwm?.original_completed_minimize) {
+      Main.wm._shellwm.original_completed_minimize(actor);
+    }
   }
 
+  /**
+   * Called on each frame of the animation timeline.
+   * Updates the deformation parameters and triggers redraw.
+   * @param {Clutter.Timeline} timer - Timeline instance.
+   * @param {number} msecs - Milliseconds elapsed.
+   */
   on_tick_elapsed(timer, msecs) {
     if (Main.overview.visible) {
       this.destroy();
+      return;
     }
 
     this.progress = timer.get_progress();
+
     this.k =
-      this.progress <= this.split ? this.progress * (1 / 1 / this.split) : 1;
+      this.progress <= this.split
+        ? easeOutCubic(this.progress / this.split, this.EASE_OUT)
+        : 1;
+
     this.j =
       this.progress > this.split
-        ? (this.progress - this.split) * (1 / 1 / (1 - this.split))
+        ? easeOutCubic(
+            (this.progress - this.split) / (1 - this.split),
+            this.EASE_OUT
+          )
         : 0;
 
-    this.actor.get_parent().queue_redraw();
+    const now = Date.now();
+    if (now - this.lastRedraw >= this.MIN_FRAME_INTERVAL) {
+      this.actor?.get_parent?.()?.queue_redraw?.();
+      this.lastRedraw = now;
+    }
     this.invalidate();
   }
 
+  /**
+   * Disables default paint volume modification to avoid culling issues.
+   * @param {Clutter.PaintVolume} pv - Paint volume.
+   * @returns {boolean} Always returns false.
+   */
   vfunc_modify_paint_volume(pv) {
     return false;
   }

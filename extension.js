@@ -30,68 +30,90 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { createSettingsData } from './src/settings/data.js';
-import { MagicLampMinimizeEffect } from './src/effects/magic-lamp-minimize.js';
-import { MagicLampUnminimizeEffect } from './src/effects/magic-lamp-unminimize.js';
+
+import { MagicLampMinimizeEffect } from './src/effects/minimize.js';
+import { MagicLampUnminimizeEffect } from './src/effects/unminimize.js';
 
 const MINIMIZE_EFFECT_NAME = 'minimize-magic-lamp-effect';
 const UNMINIMIZE_EFFECT_NAME = 'unminimize-magic-lamp-effect';
 
+/**
+ * https://github.com/GNOME/gnome-shell/blob/master/js/ui/windowManager.js
+ */
 export default class GnomeMagicLampExtension extends Extension {
   enable() {
     this.settingsData = createSettingsData(this.getSettings());
 
-    // https://github.com/GNOME/gnome-shell/blob/master/js/ui/windowManager.js
+    this._patchWindowManager();
+    this._connectWindowSignals();
+  }
 
-    Main.wm.original_minimizeMaximizeWindow_shouldAnimateActor =
-      Main.wm._shouldAnimateActor;
-    Main.wm._shouldAnimateActor = function (actor, types) {
-      let stack = new Error().stack;
+  disable() {
+    this._disconnectWindowSignals();
+    this._restoreWindowManager();
+    this.settingsData = null;
+
+    global.get_window_actors().forEach((actor) => this._removeEffects(actor));
+  }
+
+  _patchWindowManager() {
+    Main.wm.original_shouldAnimateActor = Main.wm._shouldAnimateActor;
+    Main.wm._shouldAnimateActor = (actor, types) => {
+      const stack = new Error().stack;
       if (
-        stack &&
-        (stack.indexOf('_minimizeWindow') !== -1 ||
-          stack.indexOf('_unminimizeWindow') !== -1)
+        stack?.includes('_minimizeWindow') ||
+        stack?.includes('_unminimizeWindow')
       ) {
         return false;
       }
-
-      return Main.wm.original_minimizeMaximizeWindow_shouldAnimateActor(
-        actor,
-        types
-      );
+      return Main.wm.original_shouldAnimateActor(actor, types);
     };
 
     Main.wm._shellwm.original_completed_minimize =
       Main.wm._shellwm.completed_minimize;
-    Main.wm._shellwm.completed_minimize = function (actor) {
-      return;
-    };
+    Main.wm._shellwm.completed_minimize = () => {};
 
     Main.wm._shellwm.original_completed_unminimize =
       Main.wm._shellwm.completed_unminimize;
-    Main.wm._shellwm.completed_unminimize = function (actor) {
-      return;
-    };
+    Main.wm._shellwm.completed_unminimize = () => {};
+  }
 
-    this.minimizeId = global.window_manager.connect('minimize', (e, actor) => {
+  _restoreWindowManager() {
+    if (Main.wm.original_shouldAnimateActor) {
+      Main.wm._shouldAnimateActor = Main.wm.original_shouldAnimateActor;
+      Main.wm.original_shouldAnimateActor = null;
+    }
+
+    if (Main.wm._shellwm.original_completed_minimize) {
+      Main.wm._shellwm.completed_minimize =
+        Main.wm._shellwm.original_completed_minimize;
+      Main.wm._shellwm.original_completed_minimize = null;
+    }
+
+    if (Main.wm._shellwm.original_completed_unminimize) {
+      Main.wm._shellwm.completed_unminimize =
+        Main.wm._shellwm.original_completed_unminimize;
+      Main.wm._shellwm.original_completed_unminimize = null;
+    }
+  }
+
+  _connectWindowSignals() {
+    this._minimizeId = global.window_manager.connect('minimize', (e, actor) => {
       if (Main.overview.visible) {
         Main.wm._shellwm.original_completed_minimize(actor);
         return;
       }
 
-      let icon = this.getIcon(actor);
-
-      this.destroyActorEffect(actor);
+      const icon = this._getIcon(actor);
+      this._removeEffects(actor);
 
       actor.add_effect_with_name(
         MINIMIZE_EFFECT_NAME,
-        new MagicLampMinimizeEffect({
-          settingsData: this.settingsData,
-          icon: icon,
-        })
+        new MagicLampMinimizeEffect({ settingsData: this.settingsData, icon })
       );
     });
 
-    this.unminimizeId = global.window_manager.connect(
+    this._unminimizeId = global.window_manager.connect(
       'unminimize',
       (e, actor) => {
         actor.show();
@@ -101,117 +123,80 @@ export default class GnomeMagicLampExtension extends Extension {
           return;
         }
 
-        let icon = this.getIcon(actor);
-
-        this.destroyActorEffect(actor);
+        const icon = this._getIcon(actor);
+        this._removeEffects(actor);
 
         actor.add_effect_with_name(
           UNMINIMIZE_EFFECT_NAME,
           new MagicLampUnminimizeEffect({
             settingsData: this.settingsData,
-            icon: icon,
+            icon,
           })
         );
       }
     );
   }
 
-  disable() {
-    if (this.settingsData) {
-      this.settingsData = null;
-    }
-    if (this.minimizeId) {
-      global.window_manager.disconnect(this.minimizeId);
-    }
-    if (this.minimizeId) {
-      global.window_manager.disconnect(this.unminimizeId);
+  _disconnectWindowSignals() {
+    if (this._minimizeId) {
+      global.window_manager.disconnect(this._minimizeId);
+      this._minimizeId = null;
     }
 
-    global.get_window_actors().forEach((actor) => {
-      this.destroyActorEffect(actor);
-    });
-
-    if (Main.wm.original_minimizeMaximizeWindow_shouldAnimateActor) {
-      Main.wm._shouldAnimateActor =
-        Main.wm.original_minimizeMaximizeWindow_shouldAnimateActor;
-      Main.wm.original_minimizeMaximizeWindow_shouldAnimateActor = null;
-    }
-    if (Main.wm._shellwm.original_completed_minimize) {
-      Main.wm._shellwm.completed_minimize =
-        Main.wm._shellwm.original_completed_minimize;
-      Main.wm._shellwm.original_completed_minimize = null;
-    }
-    if (Main.wm._shellwm.original_completed_unminimize) {
-      Main.wm._shellwm.completed_unminimize =
-        Main.wm._shellwm.original_completed_unminimize;
-      Main.wm._shellwm.original_completed_unminimize = null;
+    if (this._unminimizeId) {
+      global.window_manager.disconnect(this._unminimizeId);
+      this._unminimizeId = null;
     }
   }
 
-  getIcon(actor) {
-    let [success, icon] = actor.meta_window.get_icon_geometry();
-    if (success) {
-      return icon;
-    }
+  _getIcon(actor) {
+    const [hasIcon, icon] = actor.meta_window.get_icon_geometry();
+    if (hasIcon) return icon;
 
-    let monitor = Main.layoutManager.monitors[actor.meta_window.get_monitor()];
-    if (monitor && Main.overview.dash) {
-      Main.overview.dash._redisplay();
+    const monitor =
+      Main.layoutManager.monitors[actor.meta_window.get_monitor()];
+    if (!monitor) return { x: 0, y: 0, width: 0, height: 0 };
 
-      let dashIcon = null;
-      let transformed_position = null;
-      let pids = null;
-      let pid = actor.get_meta_window()
-        ? actor.get_meta_window().get_pid()
-        : null;
-      if (pid) {
-        Main.overview.dash._box
-          .get_children()
-          .filter((dashElement) => dashElement?.child?._delegate?.app)
-          .forEach((dashElement) => {
-            pids = dashElement.child._delegate.app.get_pids();
-            if (pids && pids.indexOf(pid) >= 0) {
-              transformed_position = dashElement.get_transformed_position();
-              if (transformed_position && transformed_position[0]) {
-                dashIcon = {
-                  x: transformed_position[0],
-                  y: monitor.y + monitor.height,
-                  width: 0,
-                  height: 0,
-                };
-                return;
-              }
-            }
-          });
-      }
-      if (dashIcon) {
-        return dashIcon;
-      }
+    const dashIcon = this._findDashIconForActor(actor, monitor);
+    if (dashIcon) return dashIcon;
 
-      return {
-        x: monitor.x + monitor.width / 2,
-        y: monitor.y + monitor.height,
-        width: 0,
-        height: 0,
-      };
-    }
-
-    return { x: 0, y: 0, width: 0, height: 0 };
+    return {
+      x: monitor.x + monitor.width / 2,
+      y: monitor.y + monitor.height,
+      width: 0,
+      height: 0,
+    };
   }
 
-  destroyActorEffect(actor) {
-    if (!actor) {
-      return;
+  _findDashIconForActor(actor, monitor) {
+    const pid = actor.meta_window?.get_pid();
+    if (!pid || !Main.overview.dash) return null;
+
+    Main.overview.dash._redisplay();
+
+    const dashChildren = Main.overview.dash._box.get_children() || [];
+    for (const dashElement of dashChildren) {
+      if (dashElement?.child?._delegate?.app?.get_pids?.()?.includes(pid)) {
+        const [x] = dashElement.get_transformed_position() || [0];
+        return {
+          x,
+          y: monitor.y + monitor.height,
+          width: 0,
+          height: 0,
+        };
+      }
     }
 
-    let minimizeEffect = actor.get_effect(MINIMIZE_EFFECT_NAME);
-    if (minimizeEffect) {
-      minimizeEffect.destroy();
-    }
+    return null;
+  }
 
-    let unminimizeEffect = actor.get_effect(UNMINIMIZE_EFFECT_NAME);
-    if (unminimizeEffect) {
-      unminimizeEffect.destroy();
-    }
+  _removeEffects(actor) {
+    if (!actor) return;
+
+    const minimizeEffect = actor.get_effect(MINIMIZE_EFFECT_NAME);
+    if (minimizeEffect) minimizeEffect.destroy();
+
+    const unminimizeEffect = actor.get_effect(UNMINIMIZE_EFFECT_NAME);
+    if (unminimizeEffect) unminimizeEffect.destroy();
   }
 }

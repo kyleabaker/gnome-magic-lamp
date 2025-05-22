@@ -32,97 +32,134 @@ import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/
 
 import { createSettingsData } from './src/settings/data.js';
 
+/**
+ * Preferences window for GNOME Magic Lamp
+ */
 export default class Prefs extends ExtensionPreferences {
+  /**
+   * Fill preferences window
+   *
+   * @param {Gtk.Window} window
+   */
   fillPreferencesWindow(window) {
     const settingsData = createSettingsData(this.getSettings());
 
     const width = 750;
-    const height = 380;
+    const height = 500;
     window.set_default_size(width, height);
 
     const page = Adw.PreferencesPage.new();
+    page.set_title('GNOME Magic Lamp');
 
+    // Group 1: Animation type and duration
     const group1 = Adw.PreferencesGroup.new();
+    group1.set_title('Animation');
     this.effectComboBox = this.addComboBox(
       group1,
       'Effect',
-      settingsData.EFFECT
+      settingsData.EFFECT,
+      ['default', 'sine']
     );
     this.durationSlider = this.addSlider(
       group1,
       'Duration (ms)',
       settingsData.DURATION,
-      100.0,
-      1000.0,
+      100,
+      1000,
       0
+    );
+    this.easeOutSwitch = this.addBooleanSwitch(
+      group1,
+      'Ease Out',
+      settingsData.EASE_OUT
     );
     page.add(group1);
 
+    // Group 2: Tile grid
     const group2 = Adw.PreferencesGroup.new();
+    group2.set_title('Tile Resolution');
     this.xTilesSlider = this.addSlider(
       group2,
       'X Tiles',
       settingsData.X_TILES,
-      3.0,
-      50.0,
+      3,
+      50,
       0
     );
     this.yTilesSlider = this.addSlider(
       group2,
       'Y Tiles',
       settingsData.Y_TILES,
-      3.0,
-      50.0,
+      3,
+      50,
       0
     );
     page.add(group2);
 
+    // Reset button
     this.addResetButton(window, settingsData);
 
     window.add(page);
   }
 
+  /**
+   * Add reset button
+   *
+   * @param {Gtk.Window} window
+   * @param {Object} settingsData
+   */
   addResetButton(window, settingsData) {
     const button = new Gtk.Button({ vexpand: true, valign: Gtk.Align.END });
     button.set_icon_name('edit-clear');
 
     button.connect('clicked', () => {
       settingsData.EFFECT.set('default');
-      settingsData.DURATION.set(500.0);
-      settingsData.X_TILES.set(15.0);
-      settingsData.Y_TILES.set(20.0);
+      settingsData.DURATION.set(400);
+      settingsData.EASE_OUT.set(true);
+      settingsData.X_TILES.set(20);
+      settingsData.Y_TILES.set(20);
 
-      this.effectComboBox.set_active(0);
+      this.effectComboBox.set_active(settingsData.EFFECT.get());
       this.durationSlider.set_value(settingsData.DURATION.get());
+      this.easeOutSwitch.set_value(settingsData.EASE_OUT.get());
       this.xTilesSlider.set_value(settingsData.X_TILES.get());
       this.yTilesSlider.set_value(settingsData.Y_TILES.get());
     });
 
     const header = this.findWidgetByType(window.get_content(), Adw.HeaderBar);
-    if (header) {
-      header.pack_start(button);
-    }
+    if (header) header.pack_start(button);
 
     return button;
   }
 
+  /**
+   * Add slider
+   *
+   * @param {Adw.PreferencesGroup} group
+   * @param {string} labelText
+   * @param {Object} settingsData
+   * @param {number} lower
+   * @param {number} upper
+   * @param {number} decimalDigits
+   */
   addSlider(group, labelText, settingsData, lower, upper, decimalDigits) {
     const scale = new Gtk.Scale({
       digits: decimalDigits,
-      adjustment: new Gtk.Adjustment({ lower: lower, upper: upper }),
+      adjustment: new Gtk.Adjustment({ lower, upper }),
       value_pos: Gtk.PositionType.RIGHT,
       hexpand: true,
       halign: Gtk.Align.END,
     });
     scale.set_draw_value(true);
     scale.set_value(settingsData.get());
+    scale.set_size_request(400, 15);
+
     scale.connect('value-changed', (sw) => {
       const newval = sw.get_value();
       if (newval != settingsData.get()) {
         settingsData.set(newval);
       }
     });
-    scale.set_size_request(400, 15);
 
     const row = Adw.ActionRow.new();
     row.set_title(labelText);
@@ -132,44 +169,51 @@ export default class Prefs extends ExtensionPreferences {
     return scale;
   }
 
-  addComboBox(group, labelText, settingsData) {
-    let gtkComboBoxText = new Gtk.ComboBoxText({
+  /**
+   * Add slider
+   *
+   * @param {Adw.PreferencesGroup} group
+   * @param {string} labelText
+   * @param {Object} settingsData
+   * @param {Object} values
+   */
+  addComboBox(group, labelText, settingsData, values) {
+    const combo = new Gtk.ComboBoxText({
       hexpand: true,
       halign: Gtk.Align.END,
+      valign: Gtk.Align.CENTER,
     });
-    gtkComboBoxText.set_valign(Gtk.Align.CENTER);
 
-    let activeIndex = 0;
-    let activeValue = settingsData.get();
-    let values = ['default', 'sine'];
+    values.forEach((val, i) => {
+      combo.append_text(val);
+      if (settingsData.get() === val) combo.set_active(i);
+    });
 
-    for (let i = 0; i < values.length; i++) {
-      gtkComboBoxText.append_text(values[i]);
-      if (activeValue && activeValue == values[i]) {
-        activeIndex = i;
-      }
-    }
-
-    gtkComboBoxText.set_active(activeIndex);
-    gtkComboBoxText.connect('changed', function (sw) {
-      const newval = values[sw.get_active()];
-      if (newval != settingsData.get()) {
-        settingsData.set(newval);
-      }
+    combo.connect('changed', () => {
+      const selected = combo.get_active_text();
+      if (selected) settingsData.set(selected);
     });
 
     const row = Adw.ActionRow.new();
     row.set_title(labelText);
-    row.add_suffix(gtkComboBoxText);
+    row.add_suffix(combo);
     group.add(row);
 
-    return gtkComboBoxText;
+    return combo;
   }
 
+  /**
+   * Add boolean switch
+   *
+   * @param {Adw.PreferencesGroup} group
+   * @param {string} labelText
+   * @param {Object} settingsData
+   */
   addBooleanSwitch(group, labelText, settingsData) {
     const gtkSwitch = new Gtk.Switch({ hexpand: true, halign: Gtk.Align.END });
     gtkSwitch.set_active(settingsData.get());
     gtkSwitch.set_valign(Gtk.Align.CENTER);
+
     gtkSwitch.connect('state-set', (sw) => {
       const newval = sw.get_active();
       if (newval != settingsData.get()) {
@@ -185,6 +229,12 @@ export default class Prefs extends ExtensionPreferences {
     return gtkSwitch;
   }
 
+  /**
+   * Find widget by type
+   *
+   * @param {object} parent
+   * @param {object} type
+   */
   findWidgetByType(parent, type) {
     for (const child of [...parent]) {
       if (child instanceof type) return child;

@@ -40,6 +40,8 @@ export function createSettingsData(settings) {
     ['Y_TILES', 'y-tiles'],
   ];
 
+  const booleanKeys = [['EASE_OUT', 'ease-out']];
+
   const data = {};
 
   for (const [prop, key] of stringKeys) {
@@ -53,6 +55,13 @@ export function createSettingsData(settings) {
     data[prop] = {
       get: () => settings.get_double(key),
       set: (v) => settings.set_double(key, v),
+    };
+  }
+
+  for (const [prop, key] of booleanKeys) {
+    data[prop] = {
+      get: () => settings.get_boolean(key),
+      set: (v) => settings.set_boolean(key, v),
     };
   }
 
