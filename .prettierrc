@@ -4,6 +4,7 @@
   "trailingComma": "es5",
   "printWidth": 80,
   "tabWidth": 2,
+  "bracketSpacing": true,
   "plugins": ["@prettier/plugin-xml"],
   "overrides": [
     {

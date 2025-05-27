@@ -28,6 +28,7 @@
 import GObject from 'gi://GObject';
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
+
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 /**
@@ -43,7 +44,10 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     super._init();
 
     this.settingsData = params.settingsData;
-    this.icon = params.icon || this._createRect();
+    this.getIcon = params.getIcon;
+    if (typeof this.getIcon === 'function') {
+      this.icon = this.getIcon() || this._createRect();
+    }
 
     this.monitor = this._createRect();
     this.iconMonitor = this._createRect();
@@ -147,6 +151,8 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
       this.icon.y - this.monitor.y,
     ];
 
+    // log(`MagicLamp3: raw icon geometry: ${JSON.stringify(this.icon)}`);
+
     this._determineIconSide();
   }
 
@@ -216,8 +222,10 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     }
   }
 
-  destroy_actor(actor) {} // NOSONAR
-  on_tick_elapsed(timer, msecs) {} // NOSONAR
+  // eslint-disable-next-line no-unused-vars
+  destroy_actor(_actor) {} // NOSONAR
+  // eslint-disable-next-line no-unused-vars
+  on_tick_elapsed(_timer, _msecs) {} // NOSONAR
 
   vfunc_deform_vertex(w, h, v) {
     if (!this.initialized) return;

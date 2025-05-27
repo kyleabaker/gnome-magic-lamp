@@ -104,12 +104,14 @@ export default class GnomeMagicLampExtension extends Extension {
         return;
       }
 
-      const icon = this._getIcon(actor);
       this._removeEffects(actor);
 
       actor.add_effect_with_name(
         MINIMIZE_EFFECT_NAME,
-        new MagicLampMinimizeEffect({ settingsData: this.settingsData, icon })
+        new MagicLampMinimizeEffect({
+          settingsData: this.settingsData,
+          getIcon: () => this._getIcon(actor),
+        })
       );
     });
 
@@ -123,14 +125,13 @@ export default class GnomeMagicLampExtension extends Extension {
           return;
         }
 
-        const icon = this._getIcon(actor);
         this._removeEffects(actor);
 
         actor.add_effect_with_name(
           UNMINIMIZE_EFFECT_NAME,
           new MagicLampUnminimizeEffect({
             settingsData: this.settingsData,
-            icon,
+            getIcon: () => this._getIcon(actor),
           })
         );
       }
@@ -178,6 +179,7 @@ export default class GnomeMagicLampExtension extends Extension {
     for (const dashElement of dashChildren) {
       if (dashElement?.child?._delegate?.app?.get_pids?.()?.includes(pid)) {
         const [x] = dashElement.get_transformed_position() || [0];
+
         return {
           x,
           y: monitor.y + monitor.height,

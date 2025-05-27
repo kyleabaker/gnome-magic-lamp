@@ -26,8 +26,9 @@
 'use strict';
 
 import GObject from 'gi://GObject';
-import Clutter from 'gi://Clutter';
+
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+
 import { AbstractCommonMagicLampEffect } from '../abstract/common.js';
 import { easeOutCubic } from '../utils/common.js';
 
@@ -72,7 +73,8 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
    * @param {Clutter.Timeline} timer - Timeline instance.
    * @param {number} msecs - Milliseconds elapsed.
    */
-  on_tick_elapsed(timer, msecs) {
+  // eslint-disable-next-line no-unused-vars
+  on_tick_elapsed(timer, _msecs) {
     if (Main.overview.visible) {
       this.destroy();
       return;
@@ -109,7 +111,8 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
    * @param {Clutter.PaintVolume} pv - Paint volume.
    * @returns {boolean} Always returns false.
    */
-  vfunc_modify_paint_volume(pv) {
+  // eslint-disable-next-line no-unused-vars
+  vfunc_modify_paint_volume(_pv) {
     return false;
   }
 }
