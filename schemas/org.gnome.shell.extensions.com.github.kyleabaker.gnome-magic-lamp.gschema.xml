@@ -17,7 +17,7 @@
     </key>
 
     <key type="b" name="ease-out">
-      <default>true</default>
+      <default>false</default>
       <summary>Ease Out</summary>
       <description>
         Enable East Out behavior for smoother effect animation.
@@ -34,6 +34,12 @@
       <default>20.0</default>
       <summary>Y Tiles</summary>
       <description />
+    </key>
+
+    <key type="b" name="enable-logging">
+      <default>false</default>
+      <summary>Enable Logging</summary>
+      <description>Enable logging for debugging.</description>
     </key>
   </schema>
 </schemalist>

@@ -96,6 +96,15 @@ export default class Prefs extends ExtensionPreferences {
     );
     page.add(group2);
 
+    // Settings group 3: Enable Logging
+    const group3 = Adw.PreferencesGroup.new();
+    this.enableLoggingSwitch = this.addBooleanSwitch(
+      group3,
+      'Enable Logging',
+      settingsData.ENABLE_LOGGING
+    );
+    page.add(group3);
+
     // Reset button
     this.addResetButton(window, settingsData);
 
@@ -115,15 +124,17 @@ export default class Prefs extends ExtensionPreferences {
     button.connect('clicked', () => {
       settingsData.EFFECT.set('default');
       settingsData.DURATION.set(400);
-      settingsData.EASE_OUT.set(true);
+      settingsData.EASE_OUT.set(false);
       settingsData.X_TILES.set(20);
       settingsData.Y_TILES.set(20);
+      settingsData.ENABLE_LOGGING.set(false);
 
       this.effectComboBox.set_active(settingsData.EFFECT.get());
       this.durationSlider.set_value(settingsData.DURATION.get());
       this.easeOutSwitch.set_value(settingsData.EASE_OUT.get());
       this.xTilesSlider.set_value(settingsData.X_TILES.get());
       this.yTilesSlider.set_value(settingsData.Y_TILES.get());
+      this.enableLoggingSwitch.set_value(settingsData.ENABLE_LOGGING.get());
     });
 
     const header = this.findWidgetByType(window.get_content(), Adw.HeaderBar);

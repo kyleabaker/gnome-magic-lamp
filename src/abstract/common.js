@@ -31,6 +31,8 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import { logger } from '../utils/logger.js';
+
 /**
  * AbstractCommonMagicLampEffect
  * Abstract base class for implementing a Magic Lamp animation effect.
@@ -47,6 +49,8 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     this.getIcon = params.getIcon;
     if (typeof this.getIcon === 'function') {
       this.icon = this.getIcon() || this._createRect();
+    } else {
+      this.icon = this._createRect();
     }
 
     this.monitor = this._createRect();
@@ -61,16 +65,16 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     this.completedEvent = null;
     this.timerId = null;
     this.iconPosition = null;
-    this.toTheBorder = true; // true
-    this.maxIconSize = null; // 48
+    this.toTheBorder = true;
 
     this.EPSILON = 40;
 
     this.EFFECT = this.settingsData?.EFFECT?.get?.() || 'default'; //'default' - 'sine'
     this.DURATION = this.settingsData?.DURATION?.get?.() || 400;
-    this.EASE_OUT = !!this.settingsData?.EASE_OUT?.get?.();
+    this.EASE_OUT = !!this.settingsData?.EASE_OUT?.get?.() || false;
     this.X_TILES = this.settingsData?.X_TILES?.get?.() || 20;
     this.Y_TILES = this.settingsData?.Y_TILES?.get?.() || 20;
+    this.ENABLE_LOGGING = this.settingsData?.ENABLE_LOGGING?.get?.() || false;
 
     this.initialized = false;
   }
@@ -121,6 +125,8 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
       this.destroy.bind(this)
     );
     this.timerId.start();
+
+    logger.log(this.ENABLE_LOGGING, 'Extension initialized.');
   }
 
   _initializeIconPosition() {
@@ -150,8 +156,6 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
       this.icon.x - this.monitor.x,
       this.icon.y - this.monitor.y,
     ];
-
-    // log(`MagicLamp3: raw icon geometry: ${JSON.stringify(this.icon)}`);
 
     this._determineIconSide();
   }

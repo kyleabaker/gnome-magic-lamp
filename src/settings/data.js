@@ -40,7 +40,10 @@ export function createSettingsData(settings) {
     ['Y_TILES', 'y-tiles'],
   ];
 
-  const booleanKeys = [['EASE_OUT', 'ease-out']];
+  const booleanKeys = [
+    ['EASE_OUT', 'ease-out'],
+    ['ENABLE_LOGGING', 'enable-logging'],
+  ];
 
   const data = {};
 

@@ -33,6 +33,7 @@ import { createSettingsData } from './src/settings/data.js';
 
 import { MagicLampMinimizeEffect } from './src/effects/minimize.js';
 import { MagicLampUnminimizeEffect } from './src/effects/unminimize.js';
+import { logger } from './src/utils/logger.js';
 
 const MINIMIZE_EFFECT_NAME = 'minimize-magic-lamp-effect';
 const UNMINIMIZE_EFFECT_NAME = 'unminimize-magic-lamp-effect';
@@ -44,11 +45,17 @@ export default class GnomeMagicLampExtension extends Extension {
   enable() {
     this.settingsData = createSettingsData(this.getSettings());
 
+    this.ENABLE_LOGGING = this.settingsData?.ENABLE_LOGGING?.get?.() || false;
+
     this._patchWindowManager();
     this._connectWindowSignals();
+
+    logger.log(this.ENABLE_LOGGING, 'Extension enabled.');
   }
 
   disable() {
+    logger.log(this.ENABLE_LOGGING, 'Extension disabled.');
+
     this._disconnectWindowSignals();
     this._restoreWindowManager();
     this.settingsData = null;
