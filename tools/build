@@ -1,27 +1,83 @@
 #!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
 
-# Enable verbose mode to see what's going on
-set -x
+# ---------------------------
+# Helper functions for logging
+# ---------------------------
+info()  { echo -e "\033[1;34m[INFO]\033[0m $*"; }
+warn()  { echo -e "\033[1;33m[WARN]\033[0m $*"; }
+error() { echo -e "\033[1;31m[ERROR]\033[0m $*"; }
 
-# Clean the code
+# ---------------------------
+# Check required commands
+# ---------------------------
+for cmd in npm jq glib-compile-schemas zip gnome-extensions; do
+    command -v "$cmd" >/dev/null 2>&1 || { error "$cmd is required but not installed."; exit 1; }
+done
+
+# ---------------------------
+# Clean and lint
+# ---------------------------
+info "Formatting code..."
 npm run format
 
-# ESLint
+info "Running lint..."
 npm run lint
 
-# UUID=$(jq -r .uuid metadata.json)
-# ZIPNAME="$UUID.zip"
+# ---------------------------
+# Prepare variables
+# ---------------------------
+UUID=$(jq -r .uuid metadata.json)
+ZIPNAME="$UUID.zip"
+DIST_DIR="./dist"
 
-# Compile the schema
-glib-compile-schemas schemas/
+# ---------------------------
+# Compile schemas if present
+# ---------------------------
+if [ -d schemas ]; then
+    info "Compiling schemas..."
+    glib-compile-schemas schemas/
+fi
 
-# Make dist folder
-# mkdir -p ./dist
+# ---------------------------
+# Prepare dist folder safely
+# ---------------------------
+info "Clearing dist folder..."
+rm -rf "$DIST_DIR"
+mkdir -p "$DIST_DIR"
 
-# Build zip, excluding unnecessary files
-# zip -r "../$ZIPNAME" * -x "*.git*" -x "node_modules/*" -x "dist/*"
-# echo "Packaged as $ZIPNAME"
+# ---------------------------
+# Copy files to dist
+# ---------------------------
+DIST_PATHS=("assets" "schemas" "src" "extension.js" "LICENSE" "metadata.json" "prefs.js" "README.md")
 
-# Install and enable
-# gnome-extensions install $ZIPNAME
-# gnome-extensions enable $UUID
+for path in "${DIST_PATHS[@]}"; do
+    if [ -e "$path" ]; then
+        cp -r "$path" "$DIST_DIR/$path"
+        info "Copied $path to $DIST_DIR/$path"
+    else
+        warn "$path does not exist, skipping."
+    fi
+done
+
+# ---------------------------
+# Create zip package
+# ---------------------------
+info "Creating zip package..."
+(
+    cd "$DIST_DIR"
+    zip -r "$ZIPNAME" . >/dev/null
+)
+info "Packaged as: $DIST_DIR/$ZIPNAME"
+
+# ---------------------------
+# Install and enable extension
+# ---------------------------
+info "Installing GNOME extension..."
+gnome-extensions install "$DIST_DIR/$ZIPNAME" --force
+
+info "Enabling GNOME extension..."
+gnome-extensions enable "$UUID"
+
+info "Build and install complete."
