@@ -10,7 +10,7 @@ npm audit fix
 
 # Update npm packages
 # npm install -g npm-check-updates
-# ncu -u
+ncu -u
 
 # Update dependencies
 npm install

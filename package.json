@@ -22,14 +22,14 @@
   },
   "homepage": "https://github.com/kyleabaker/gnome-wobbly-windows#readme",
   "devDependencies": {
-    "@eslint/js": "^9.27.0",
-    "@prettier/plugin-xml": "^3.4.1",
-    "eslint": "^9.27.0",
-    "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-prettier": "^5.4.0",
-    "prettier": "^3.5.3"
+    "@eslint/js": "^9.37.0",
+    "@prettier/plugin-xml": "^3.4.2",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2"
   },
   "dependencies": {
-    "npm-check-updates": "^18.0.1"
+    "npm-check-updates": "^19.0.0"
   }
 }

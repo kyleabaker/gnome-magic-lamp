@@ -4,6 +4,6 @@
   "url": "https://github.com/kyleabaker/gnome-magic-lamp",
   "uuid": "gnome-magic-lamp@kyleabaker.github.com",
   "settings-schema": "org.gnome.shell.extensions.com.github.kyleabaker.gnome-magic-lamp",
-  "shell-version": ["45", "46", "47", "48"],
+  "shell-version": ["45", "46", "47", "48", "49"],
   "version": 1
 }
