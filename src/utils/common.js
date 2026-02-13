@@ -2,7 +2,7 @@
  * GNOME Magic Lamp for GNOME Shell
  *
  * Copyright (C) 2025
- *     Kyle Baker <https://github.com/kyleabaker/gnome-wobbly-windows>
+ *     Kyle Baker <https://github.com/kyleabaker/gnome-magic-lamp>
  *
  * This file is part of the gnome-shell extension gnome-magic-lamp.
  *

@@ -1,7 +1,7 @@
 {
-  "name": "gnome-wobbly-windows",
+  "name": "GNOME Magic Lamp",
   "version": "1.0.0",
-  "description": "Wobbly windows effect for GNOME Shell. Mimics the Compiz plugin engine to render the Wobby Windows feature.",
+  "description": "Magic Lamp minimize and maximize effect for GNOME Shell. Mimics the Compiz plugin engine.",
   "main": "extension.js",
   "type": "module",
   "scripts": {
@@ -12,24 +12,24 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kyleabaker/gnome-wobbly-windows.git"
+    "url": "git+https://github.com/kyleabaker/gnome-magic-lamp.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/kyleabaker/gnome-wobbly-windows/issues"
+    "url": "https://github.com/kyleabaker/gnome-magic-lamp/issues"
   },
-  "homepage": "https://github.com/kyleabaker/gnome-wobbly-windows#readme",
+  "homepage": "https://github.com/kyleabaker/gnome-magic-lamp#readme",
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
+    "@eslint/js": "^10.0.1",
     "@prettier/plugin-xml": "^3.4.2",
-    "eslint": "^9.39.2",
+    "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
-    "prettier": "^3.8.0"
+    "prettier": "^3.8.1"
   },
   "dependencies": {
-    "npm-check-updates": "^19.3.1"
+    "npm-check-updates": "^19.3.2"
   }
 }

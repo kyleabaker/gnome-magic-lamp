@@ -1,0 +1,43 @@
+name: Build and Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers whenever you push a tag starting with 'v'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq glib2.0-dev zip gnome-shell
+
+      - name: Build Extension
+        run: make -f tools/Makefile
+
+      - name: Get UUID and Version
+        id: meta
+        run: |
+          UUID=$(jq -r .uuid metadata.json)
+          VERSION=$(jq -r .version metadata.json)
+          echo "uuid=$UUID" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ steps.meta.outputs.uuid }}.zip
+          name: Release ${{ github.ref_name }} (v${{ steps.meta.outputs.version }})
+          body: |
+            Automated build for version ${{ steps.meta.outputs.version }}.
+
+            Install via:
+            `gnome-extensions install ${{ steps.meta.outputs.uuid }}.zip`
+          draft: false
+          prerelease: false

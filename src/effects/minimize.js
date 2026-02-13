@@ -4,7 +4,7 @@
  * Copyright (C) 2020
  *     Mauro Pepe <https://github.com/hermes83/compiz-alike-magic-lamp-effect>
  * Copyright (C) 2025
- *     Kyle Baker <https://github.com/kyleabaker/gnome-wobbly-windows>
+ *     Kyle Baker <https://github.com/kyleabaker/gnome-magic-lamp>
  *
  * This file is part of the gnome-shell extension gnome-magic-lamp.
  *
