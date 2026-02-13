@@ -1,0 +1,41 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq glib2.0-dev zip gnome-shell
+
+      - name: Install NPM Dependencies
+        run: npm install
+
+      - name: Check Code Formatting (Lint)
+        run: npx prettier --check '**/*.{js,ts,xml,html,json,css,scss,yaml,yml,md}'
+
+      - name: Build Extension
+        run: make -f tools/Makefile
+
+      - name: Upload Build Artifact (Optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnome-magic-lamp-build
+          path: dist/*.zip
+          retention-days: 5

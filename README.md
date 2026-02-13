@@ -1,6 +1,7 @@
 # GNOME Magic Lamp for GNOME Shell
 
-[![Build and Release Extension](https://github.com/kyleabaker/gnome-magic-lamp/actions/workflows/release.yml/badge.svg)](https://github.com/kyleabaker/gnome-magic-lamp/actions)
+[![Build and Release Extension](https://github.com/kyleabaker/gnome-magic-lamp/actions/workflows/release.yaml/badge.svg)](https://github.com/kyleabaker/gnome-magic-lamp/actions)
+![CI Status](https://github.com/kyleabaker/gnome-magic-lamp/actions/workflows/ci.yaml/badge.svg)
 [![Latest Release](https://img.shields.io/github/v/release/kyleabaker/gnome-magic-lamp)](https://github.com/kyleabaker/gnome-magic-lamp/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
