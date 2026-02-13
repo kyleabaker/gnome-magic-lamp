@@ -1,5 +1,9 @@
 # GNOME Magic Lamp for GNOME Shell
 
+[![Build and Release Extension](https://github.com/kyleabaker/gnome-magic-lamp/actions/workflows/release.yml/badge.svg)](https://github.com/kyleabaker/gnome-magic-lamp/actions)
+[![Latest Release](https://img.shields.io/github/v/release/kyleabaker/gnome-magic-lamp)](https://github.com/kyleabaker/gnome-magic-lamp/releases)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 [<img src="assets/screenshot.png" width="100%">](https://extensions.gnome.org/extension/)
 
 ### Quick Install (One-Liner)
@@ -52,7 +56,7 @@ GNOME requires a session refresh to detect new local extensions:
 - **Wayland:** Log out and log back in.
 - **Enable:** Use the **Extensions** app or run:
   ```bash
-  gnome-extensions enable gnome-wobbly-windows@kyleabaker.github.com
+  gnome-extensions enable gnome-magic-lamp@kyleabaker.github.com
   ```
 
 ### Release Process
