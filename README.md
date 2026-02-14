@@ -7,7 +7,7 @@
 
 GNOME Magic Lamp is a window minimize and maximize animation effect for GNOME Shell which is inspired by Compiz.
 
-[<img src="assets/screenshot.png" width="100%">](https://extensions.gnome.org/extension/)
+[<img src="assets/screenshot.png" width="100%">](https://www.kyleabaker.com/goodies/linux/gnome-magic-lamp-for-gnome-shell/)
 
 ### Quick Install (One-Liner)
 
