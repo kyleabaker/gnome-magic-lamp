@@ -1,7 +1,7 @@
 {
   "name": "GNOME Magic Lamp",
   "version": "1.0.0",
-  "description": "Magic Lamp minimize and maximize effect for GNOME Shell. Mimics the Compiz plugin engine.",
+  "description": "GNOME Magic Lamp is a window minimize and maximize animation effect for GNOME Shell which is inspired by Compiz.",
   "main": "extension.js",
   "type": "module",
   "scripts": {

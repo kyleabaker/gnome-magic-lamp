@@ -5,6 +5,8 @@
 [![Latest Release](https://img.shields.io/github/v/release/kyleabaker/gnome-magic-lamp)](https://github.com/kyleabaker/gnome-magic-lamp/releases)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
+GNOME Magic Lamp is a window minimize and maximize animation effect for GNOME Shell which is inspired by Compiz.
+
 [<img src="assets/screenshot.png" width="100%">](https://extensions.gnome.org/extension/)
 
 ### Quick Install (One-Liner)
