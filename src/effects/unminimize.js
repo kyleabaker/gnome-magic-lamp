@@ -51,9 +51,6 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
     this.k = 1;
     this.j = 1;
     this.isMinimizeEffect = false;
-
-    this.lastRedraw = 0;
-    this.MIN_FRAME_INTERVAL = 8; // ~120fps
   }
 
   /**
@@ -98,11 +95,8 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
         ? easeOutCubic(this.progress / splitPoint, this.EASE_OUT)
         : 1);
 
-    const now = Date.now();
-    if (now - this.lastRedraw >= this.MIN_FRAME_INTERVAL) {
-      this.actor?.get_parent?.()?.queue_redraw?.();
-      this.lastRedraw = now;
-    }
+    this.updateFrameState();
+    this.actor?.get_parent?.()?.queue_redraw?.();
     this.invalidate();
   }
 

@@ -33,6 +33,9 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { logger } from '../utils/logger.js';
 
+const PI2 = 2 * Math.PI;
+const PI4 = 4 * Math.PI;
+
 /**
  * AbstractCommonMagicLampEffect
  * Abstract base class for implementing a Magic Lamp animation effect.
@@ -70,6 +73,8 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     this.EPSILON = 40;
 
     this.EFFECT = this.settingsData?.EFFECT?.get?.() || 'default'; //'default' - 'sine'
+    this.isSine = this.EFFECT === 'sine';
+    this._deformSide = null;
     this.DURATION = this.settingsData?.DURATION?.get?.() || 400;
     this.EASE_OUT = !!this.settingsData?.EASE_OUT?.get?.() || false;
     this.X_TILES = this.settingsData?.X_TILES?.get?.() || 20;
@@ -100,6 +105,7 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
 
     this._initializeIconPosition();
     this.set_n_tiles(this.X_TILES, this.Y_TILES);
+    this.updateFrameState();
 
     // Scale factor helps avoid crazy-fast durations for small windows and slow for big ones for a more consistent perception.
     const scaleFactor = Math.max(
@@ -200,6 +206,24 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     ) {
       this.iconPosition = St.Side.RIGHT;
     }
+
+    switch (this.iconPosition) {
+      case St.Side.LEFT:
+        this._deformSide = this._deformLeft.bind(this);
+        break;
+      case St.Side.TOP:
+        this._deformSide = this._deformTop.bind(this);
+        break;
+      case St.Side.RIGHT:
+        this._deformSide = this._deformRight.bind(this);
+        break;
+      case St.Side.BOTTOM:
+        this._deformSide = this._deformBottom.bind(this);
+        break;
+      default:
+        this._deformSide = null;
+        break;
+    }
   }
 
   destroy() {
@@ -232,168 +256,209 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
   on_tick_elapsed(_timer, _msecs) {} // NOSONAR
 
   vfunc_deform_vertex(w, h, v) {
-    if (!this.initialized) return;
+    if (!this.initialized || !this._deformSide) return;
 
-    const propX = w / this.window.width;
-    const propY = h / this.window.height;
-
-    const { x, y } = this._deformBySide(v);
-    v.x = x * propX;
-    v.y = y * propY;
+    this._deformSide(v, w / this.window.width, h / this.window.height);
   }
 
-  _deformBySide(v) {
+  updateFrameState() {
+    if (!this.initialized) return;
+
     switch (this.iconPosition) {
-      case St.Side.LEFT:
-        return this._deformLeft(v);
-      case St.Side.TOP:
-        return this._deformTop(v);
-      case St.Side.RIGHT:
-        return this._deformRight(v);
-      case St.Side.BOTTOM:
-        return this._deformBottom(v);
-      default:
-        return { x: 0, y: 0 };
+      case St.Side.LEFT: {
+        const width =
+          this.window.width - this.icon.width + this.window.x * this.k;
+        this._f_width = width;
+        this._f_invWidth = width !== 0 ? 1 / width : 0;
+        this._f_spanX = (1 - this.j) * width;
+        this._f_offsetX = this.icon.width - this.window.x * this.k;
+        this._f_diffY_k = (this.icon.y - this.window.y) * this.k;
+        this._f_oneMinusK = 1 - this.k;
+        this._f_sineCoeff = this.isSine
+          ? (this.window.height / 14) * this.k
+          : 0;
+        this._f_coeffK_7 = !this.isSine ? this.k / 7 : 0;
+        this._f_baseY = this.window.y - this.icon.y;
+        this._f_heightDiff = this.window.height - this.icon.height;
+        break;
+      }
+      case St.Side.TOP: {
+        const height =
+          this.window.height - this.icon.height + this.window.y * this.k;
+        this._f_height = height;
+        this._f_invHeight = height !== 0 ? 1 / height : 0;
+        this._f_spanY = (1 - this.j) * height;
+        this._f_offsetY = this.icon.height - this.window.y * this.k;
+        this._f_diffX_k = (this.icon.x - this.window.x) * this.k;
+        this._f_oneMinusK = 1 - this.k;
+        this._f_sineCoeff = this.isSine ? (this.window.width / 14) * this.k : 0;
+        this._f_coeffK_7 = !this.isSine ? this.k / 7 : 0;
+        this._f_baseX = this.window.x - this.icon.x;
+        this._f_widthDiff = this.window.width - this.icon.width;
+        break;
+      }
+      case St.Side.RIGHT: {
+        const expandWidth =
+          this.iconMonitor.width -
+          this.icon.width -
+          this.window.x -
+          this.window.width;
+        const fullWidth =
+          this.iconMonitor.width -
+          this.icon.width -
+          this.window.x -
+          expandWidth * (1 - this.k);
+        const width = fullWidth - this.j * fullWidth;
+        this._f_fullWidth = fullWidth;
+        this._f_invFullWidth = fullWidth !== 0 ? 1 / fullWidth : 0;
+        this._f_width = width;
+        this._f_offsetX =
+          this.iconMonitor.width -
+          this.icon.width -
+          this.window.x -
+          width -
+          expandWidth * (1 - this.k);
+        const diffY = this.icon.y - this.window.y;
+        this._f_offsetYBase = diffY * this.j;
+        this._f_offsetYScale = diffY * this.k * this._f_invFullWidth;
+        const heightDiff = this.window.height - this.icon.height;
+        this._f_heightDiff = heightDiff;
+        this._f_coeff1 = heightDiff * (1 - this.j);
+        this._f_coeff2 = heightDiff * (1 - this.k);
+        this._f_sineCoeff = this.isSine
+          ? (this.window.height / 14) * this.k
+          : 0;
+        this._f_coeffK_7 = !this.isSine ? this.k / 7 : 0;
+        this._f_baseY = this.window.y - this.icon.y;
+        break;
+      }
+      case St.Side.BOTTOM: {
+        const expandHeight =
+          this.iconMonitor.height -
+          this.icon.height -
+          this.window.y -
+          this.window.height;
+        const fullHeight =
+          this.iconMonitor.height -
+          this.icon.height -
+          this.window.y -
+          expandHeight * (1 - this.k);
+        const height = fullHeight - this.j * fullHeight;
+        this._f_fullHeight = fullHeight;
+        this._f_invFullHeight = fullHeight !== 0 ? 1 / fullHeight : 0;
+        this._f_height = height;
+        this._f_offsetY =
+          this.iconMonitor.height -
+          this.icon.height -
+          this.window.y -
+          height -
+          expandHeight * (1 - this.k);
+        const diffX = this.icon.x - this.window.x;
+        this._f_offsetXBase = diffX * this.j;
+        this._f_offsetXScale = diffX * this.k * this._f_invFullHeight;
+        const widthDiff = this.window.width - this.icon.width;
+        this._f_widthDiff = widthDiff;
+        this._f_coeff1 = widthDiff * (1 - this.j);
+        this._f_coeff2 = widthDiff * (1 - this.k);
+        this._f_sineCoeff = this.isSine ? (this.window.width / 14) * this.k : 0;
+        this._f_coeffK_7 = !this.isSine ? this.k / 7 : 0;
+        this._f_baseX = this.window.x - this.icon.x;
+        break;
+      }
     }
   }
 
-  _deformLeft(v) {
-    const width = this.window.width - this.icon.width + this.window.x * this.k;
-    const x = (width - this.j * width) * v.tx;
+  _deformLeft(v, propX, propY) {
+    const x = this._f_spanX * v.tx;
+    const ratio = (this._f_width - x) * this._f_invWidth;
     const y =
-      (v.ty * this.window.height * (x + (width - x) * (1 - this.k))) / width +
-      (v.ty * this.icon.height * (width - x)) / width;
-
-    const offsetX = this.icon.width - this.window.x * this.k;
-    const offsetY =
-      (this.icon.y - this.window.y) * ((width - x) / width) * this.k;
-    const effectY =
-      this.EFFECT === 'sine'
-        ? ((Math.sin((x / width) * Math.PI * 4) * this.window.height) / 14) *
-          this.k
-        : ((Math.sin((0.5 - (width - x) / width) * 2 * Math.PI) *
-            (this.window.y +
-              this.window.height * v.ty -
-              (this.icon.y + this.icon.height * v.ty))) /
-            7) *
-          this.k;
-
-    return { x: x + offsetX, y: y + offsetY + effectY };
-  }
-
-  _deformTop(v) {
-    const height =
-      this.window.height - this.icon.height + this.window.y * this.k;
-    const y = (height - this.j * height) * v.ty;
-    const x =
-      (v.tx * this.window.width * (y + (height - y) * (1 - this.k))) / height +
-      (v.tx * this.icon.width * (height - y)) / height;
-
-    const offsetX =
-      (this.icon.x - this.window.x) * ((height - y) / height) * this.k;
-    const offsetY = this.icon.height - this.window.y * this.k;
-    const effectX =
-      this.EFFECT === 'sine'
-        ? ((Math.sin((y / height) * Math.PI * 4) * this.window.width) / 14) *
-          this.k
-        : ((Math.sin((0.5 - (height - y) / height) * 2 * Math.PI) *
-            (this.window.x +
-              this.window.width * v.tx -
-              (this.icon.x + this.icon.width * v.tx))) /
-            7) *
-          this.k;
-
-    return { x: x + offsetX + effectX, y: y + offsetY };
-  }
-
-  _deformRight(v) {
-    const expandWidth =
-      this.iconMonitor.width -
-      this.icon.width -
-      this.window.x -
-      this.window.width;
-    const fullWidth =
-      this.iconMonitor.width -
-      this.icon.width -
-      this.window.x -
-      expandWidth * (1 - this.k);
-    const width = fullWidth - this.j * fullWidth;
-
-    const x = v.tx * width;
-    const y =
-      v.ty * this.icon.height +
       v.ty *
-        (this.window.height - this.icon.height) *
-        (1 - this.j) *
-        (1 - v.tx) +
-      v.ty * (this.window.height - this.icon.height) * (1 - this.k) * v.tx;
+      (this.window.height * (x * this._f_invWidth + ratio * this._f_oneMinusK) +
+        this.icon.height * ratio);
+    const offsetY = this._f_diffY_k * ratio;
 
-    const offsetX =
-      this.iconMonitor.width -
-      this.icon.width -
-      this.window.x -
-      width -
-      expandWidth * (1 - this.k);
-    const offsetY =
-      (this.icon.y - this.window.y) * (x / fullWidth) * this.k +
-      (this.icon.y - this.window.y) * this.j;
-    const effectY =
-      this.EFFECT === 'sine'
-        ? ((Math.sin(((width - x) / fullWidth) * Math.PI * 4) *
-            this.window.height) /
-            14) *
-          this.k
-        : ((Math.sin(((width - x) / fullWidth) * 2 * Math.PI + Math.PI) *
-            (this.window.y +
-              this.window.height * v.ty -
-              (this.icon.y + this.icon.height * v.ty))) /
-            7) *
-          this.k;
+    let effectY;
+    if (this.isSine) {
+      effectY = Math.sin(x * this._f_invWidth * PI4) * this._f_sineCoeff;
+    } else {
+      const sineFactor = Math.sin((0.5 - ratio) * PI2);
+      effectY =
+        sineFactor *
+        (this._f_baseY + this._f_heightDiff * v.ty) *
+        this._f_coeffK_7;
+    }
 
-    return { x: x + offsetX, y: y + offsetY + effectY };
+    v.x = (x + this._f_offsetX) * propX;
+    v.y = (y + offsetY + effectY) * propY;
   }
 
-  _deformBottom(v) {
-    const expandHeight =
-      this.iconMonitor.height -
-      this.icon.height -
-      this.window.y -
-      this.window.height;
-    const fullHeight =
-      this.iconMonitor.height -
-      this.icon.height -
-      this.window.y -
-      expandHeight * (1 - this.k);
-    const height = fullHeight - this.j * fullHeight;
-
-    const y = v.ty * height;
+  _deformTop(v, propX, propY) {
+    const y = this._f_spanY * v.ty;
+    const ratio = (this._f_height - y) * this._f_invHeight;
     const x =
-      v.tx * this.icon.width +
-      v.tx * (this.window.width - this.icon.width) * (1 - this.j) * (1 - v.ty) +
-      v.tx * (this.window.width - this.icon.width) * (1 - this.k) * v.ty;
+      v.tx *
+      (this.window.width * (y * this._f_invHeight + ratio * this._f_oneMinusK) +
+        this.icon.width * ratio);
+    const offsetX = this._f_diffX_k * ratio;
 
-    const offsetX =
-      (this.icon.x - this.window.x) * (y / fullHeight) * this.k +
-      (this.icon.x - this.window.x) * this.j;
-    const offsetY =
-      this.iconMonitor.height -
-      this.icon.height -
-      this.window.y -
-      height -
-      expandHeight * (1 - this.k);
-    const effectX =
-      this.EFFECT === 'sine'
-        ? ((Math.sin(((height - y) / fullHeight) * Math.PI * 4) *
-            this.window.width) /
-            14) *
-          this.k
-        : ((Math.sin(((height - y) / fullHeight) * 2 * Math.PI + Math.PI) *
-            (this.window.x +
-              this.window.width * v.tx -
-              (this.icon.x + this.icon.width * v.tx))) /
-            7) *
-          this.k;
+    let effectX;
+    if (this.isSine) {
+      effectX = Math.sin(y * this._f_invHeight * PI4) * this._f_sineCoeff;
+    } else {
+      const sineFactor = Math.sin((0.5 - ratio) * PI2);
+      effectX =
+        sineFactor *
+        (this._f_baseX + this._f_widthDiff * v.tx) *
+        this._f_coeffK_7;
+    }
 
-    return { x: x + offsetX + effectX, y: y + offsetY };
+    v.x = (x + offsetX + effectX) * propX;
+    v.y = (y + this._f_offsetY) * propY;
+  }
+
+  _deformRight(v, propX, propY) {
+    const x = v.tx * this._f_width;
+    const y =
+      v.ty *
+      (this.icon.height + this._f_coeff1 * (1 - v.tx) + this._f_coeff2 * v.tx);
+    const offsetY = x * this._f_offsetYScale + this._f_offsetYBase;
+    const ratio = (this._f_width - x) * this._f_invFullWidth;
+
+    let effectY;
+    if (this.isSine) {
+      effectY = Math.sin(ratio * PI4) * this._f_sineCoeff;
+    } else {
+      const sineFactor = Math.sin(ratio * PI2 + Math.PI);
+      effectY =
+        sineFactor *
+        (this._f_baseY + this._f_heightDiff * v.ty) *
+        this._f_coeffK_7;
+    }
+
+    v.x = (x + this._f_offsetX) * propX;
+    v.y = (y + offsetY + effectY) * propY;
+  }
+
+  _deformBottom(v, propX, propY) {
+    const y = v.ty * this._f_height;
+    const x =
+      v.tx *
+      (this.icon.width + this._f_coeff1 * (1 - v.ty) + this._f_coeff2 * v.ty);
+    const offsetX = y * this._f_offsetXScale + this._f_offsetXBase;
+    const ratio = (this._f_height - y) * this._f_invFullHeight;
+
+    let effectX;
+    if (this.isSine) {
+      effectX = Math.sin(ratio * PI4) * this._f_sineCoeff;
+    } else {
+      const sineFactor = Math.sin(ratio * PI2 + Math.PI);
+      effectX =
+        sineFactor *
+        (this._f_baseX + this._f_widthDiff * v.tx) *
+        this._f_coeffK_7;
+    }
+
+    v.x = (x + offsetX + effectX) * propX;
+    v.y = (y + this._f_offsetY) * propY;
   }
 }

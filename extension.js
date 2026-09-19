@@ -25,6 +25,8 @@
  */
 'use strict';
 
+import Shell from 'gi://Shell';
+
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -64,16 +66,34 @@ export default class GnomeMagicLampExtension extends Extension {
   }
 
   _patchWindowManager() {
+    this._inWindowAnimation = false;
+
+    Main.wm.original_minimizeWindow = Main.wm._minimizeWindow;
+    Main.wm._minimizeWindow = (shellwm, actor) => {
+      this._inWindowAnimation = true;
+      try {
+        Main.wm.original_minimizeWindow.call(Main.wm, shellwm, actor);
+      } finally {
+        this._inWindowAnimation = false;
+      }
+    };
+
+    Main.wm.original_unminimizeWindow = Main.wm._unminimizeWindow;
+    Main.wm._unminimizeWindow = (shellwm, actor) => {
+      this._inWindowAnimation = true;
+      try {
+        Main.wm.original_unminimizeWindow.call(Main.wm, shellwm, actor);
+      } finally {
+        this._inWindowAnimation = false;
+      }
+    };
+
     Main.wm.original_shouldAnimateActor = Main.wm._shouldAnimateActor;
     Main.wm._shouldAnimateActor = (actor, types) => {
-      const stack = new Error().stack;
-      if (
-        stack?.includes('_minimizeWindow') ||
-        stack?.includes('_unminimizeWindow')
-      ) {
+      if (this._inWindowAnimation) {
         return false;
       }
-      return Main.wm.original_shouldAnimateActor(actor, types);
+      return Main.wm.original_shouldAnimateActor.call(Main.wm, actor, types);
     };
 
     Main.wm._shellwm.original_completed_minimize =
@@ -86,6 +106,16 @@ export default class GnomeMagicLampExtension extends Extension {
   }
 
   _restoreWindowManager() {
+    if (Main.wm.original_minimizeWindow) {
+      Main.wm._minimizeWindow = Main.wm.original_minimizeWindow;
+      Main.wm.original_minimizeWindow = null;
+    }
+
+    if (Main.wm.original_unminimizeWindow) {
+      Main.wm._unminimizeWindow = Main.wm.original_unminimizeWindow;
+      Main.wm.original_unminimizeWindow = null;
+    }
+
     if (Main.wm.original_shouldAnimateActor) {
       Main.wm._shouldAnimateActor = Main.wm.original_shouldAnimateActor;
       Main.wm.original_shouldAnimateActor = null;
@@ -177,14 +207,21 @@ export default class GnomeMagicLampExtension extends Extension {
   }
 
   _findDashIconForActor(actor, monitor) {
-    const pid = actor.meta_window?.get_pid();
-    if (!pid || !Main.overview.dash) return null;
+    if (!Main.overview.dash?._box) return null;
 
-    Main.overview.dash._redisplay();
+    const windowApp = Shell.AppSystem.get_default()?.get_window_app(
+      actor.meta_window
+    );
+    const pid = actor.meta_window?.get_pid();
+    if (!windowApp && !pid) return null;
 
     const dashChildren = Main.overview.dash._box.get_children() || [];
     for (const dashElement of dashChildren) {
-      if (dashElement?.child?._delegate?.app?.get_pids?.()?.includes(pid)) {
+      const app = dashElement?.child?._delegate?.app;
+      if (
+        (windowApp && app === windowApp) ||
+        (pid && app?.get_pids?.()?.includes(pid))
+      ) {
         const [x] = dashElement.get_transformed_position() || [0];
 
         return {
