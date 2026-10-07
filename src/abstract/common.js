@@ -75,10 +75,6 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     this.EFFECT = this.settingsData?.EFFECT?.get?.() || 'default'; //'default' - 'sine'
     this.isSine = this.EFFECT === 'sine';
     this._deformSide = null;
-    this._lastW = 0;
-    this._lastH = 0;
-    this._propX = 1;
-    this._propY = 1;
     this.DURATION = this.settingsData?.DURATION?.get?.() || 400;
     this.EASE_OUT = !!this.settingsData?.EASE_OUT?.get?.() || false;
     this.X_TILES = this.settingsData?.X_TILES?.get?.() || 20;
@@ -213,16 +209,16 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
 
     switch (this.iconPosition) {
       case St.Side.LEFT:
-        this._deformSide = this._deformLeft;
+        this._deformSide = this._deformLeft.bind(this);
         break;
       case St.Side.TOP:
-        this._deformSide = this._deformTop;
+        this._deformSide = this._deformTop.bind(this);
         break;
       case St.Side.RIGHT:
-        this._deformSide = this._deformRight;
+        this._deformSide = this._deformRight.bind(this);
         break;
       case St.Side.BOTTOM:
-        this._deformSide = this._deformBottom;
+        this._deformSide = this._deformBottom.bind(this);
         break;
       default:
         this._deformSide = null;
@@ -262,14 +258,7 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
   vfunc_deform_vertex(w, h, v) {
     if (!this.initialized || !this._deformSide) return;
 
-    if (this._lastW !== w || this._lastH !== h) {
-      this._lastW = w;
-      this._lastH = h;
-      this._propX = this.window.width !== 0 ? w / this.window.width : 1;
-      this._propY = this.window.height !== 0 ? h / this.window.height : 1;
-    }
-
-    this._deformSide(v, this._propX, this._propY);
+    this._deformSide(v, w / this.window.width, h / this.window.height);
   }
 
   updateFrameState() {
@@ -381,17 +370,16 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
 
   _deformLeft(v, propX, propY) {
     const x = this._f_spanX * v.tx;
-    const normX = x * this._f_invWidth;
-    const ratio = 1 - normX;
+    const ratio = (this._f_width - x) * this._f_invWidth;
     const y =
       v.ty *
-      (this.window.height * (normX + ratio * this._f_oneMinusK) +
+      (this.window.height * (x * this._f_invWidth + ratio * this._f_oneMinusK) +
         this.icon.height * ratio);
     const offsetY = this._f_diffY_k * ratio;
 
     let effectY;
     if (this.isSine) {
-      effectY = Math.sin(normX * PI4) * this._f_sineCoeff;
+      effectY = Math.sin(x * this._f_invWidth * PI4) * this._f_sineCoeff;
     } else {
       const sineFactor = Math.sin((0.5 - ratio) * PI2);
       effectY =
@@ -406,17 +394,16 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
 
   _deformTop(v, propX, propY) {
     const y = this._f_spanY * v.ty;
-    const normY = y * this._f_invHeight;
-    const ratio = 1 - normY;
+    const ratio = (this._f_height - y) * this._f_invHeight;
     const x =
       v.tx *
-      (this.window.width * (normY + ratio * this._f_oneMinusK) +
+      (this.window.width * (y * this._f_invHeight + ratio * this._f_oneMinusK) +
         this.icon.width * ratio);
     const offsetX = this._f_diffX_k * ratio;
 
     let effectX;
     if (this.isSine) {
-      effectX = Math.sin(normY * PI4) * this._f_sineCoeff;
+      effectX = Math.sin(y * this._f_invHeight * PI4) * this._f_sineCoeff;
     } else {
       const sineFactor = Math.sin((0.5 - ratio) * PI2);
       effectX =
