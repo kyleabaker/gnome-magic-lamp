@@ -51,6 +51,9 @@ export class MagicLampMinimizeEffect extends AbstractCommonMagicLampEffect {
     this.k = 0;
     this.j = 0;
     this.isMinimizeEffect = true;
+
+    this._invSplit = 1 / this.split;
+    this._invSplitRemainder = 1 / (1 - this.split);
   }
 
   /**
@@ -81,13 +84,13 @@ export class MagicLampMinimizeEffect extends AbstractCommonMagicLampEffect {
 
     this.k =
       this.progress <= this.split
-        ? easeOutCubic(this.progress / this.split, this.EASE_OUT)
+        ? easeOutCubic(this.progress * this._invSplit, this.EASE_OUT)
         : 1;
 
     this.j =
       this.progress > this.split
         ? easeOutCubic(
-            (this.progress - this.split) / (1 - this.split),
+            (this.progress - this.split) * this._invSplitRemainder,
             this.EASE_OUT
           )
         : 0;

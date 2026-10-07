@@ -51,6 +51,10 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
     this.k = 1;
     this.j = 1;
     this.isMinimizeEffect = false;
+
+    this._splitPoint = 1 - this.split;
+    this._invSplitPoint = 1 / this._splitPoint;
+    this._invSplitRemainder = 1 / (1 - this._splitPoint);
   }
 
   /**
@@ -78,21 +82,20 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
     }
 
     this.progress = timer.get_progress();
-    const splitPoint = 1 - this.split;
 
     this.k =
       1 -
-      (this.progress > splitPoint
+      (this.progress > this._splitPoint
         ? easeOutCubic(
-            (this.progress - splitPoint) / (1 - splitPoint),
+            (this.progress - this._splitPoint) * this._invSplitRemainder,
             this.EASE_OUT
           )
         : 0);
 
     this.j =
       1 -
-      (this.progress <= splitPoint
-        ? easeOutCubic(this.progress / splitPoint, this.EASE_OUT)
+      (this.progress <= this._splitPoint
+        ? easeOutCubic(this.progress * this._invSplitPoint, this.EASE_OUT)
         : 1);
 
     this.updateFrameState();
