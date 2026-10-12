@@ -25,6 +25,8 @@
  */
 'use strict';
 
+import Shell from 'gi://Shell';
+
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -60,7 +62,9 @@ export default class GnomeMagicLampExtension extends Extension {
     this._restoreWindowManager();
     this.settingsData = null;
 
-    global.get_window_actors().forEach((actor) => this._removeEffects(actor));
+    global.get_window_actors().forEach((actor) => {
+      if (actor) this._removeEffects(actor);
+    });
   }
 
   _patchWindowManager() {
@@ -73,7 +77,7 @@ export default class GnomeMagicLampExtension extends Extension {
       ) {
         return false;
       }
-      return Main.wm.original_shouldAnimateActor(actor, types);
+      return Main.wm.original_shouldAnimateActor?.(actor, types) ?? true;
     };
 
     Main.wm._shellwm.original_completed_minimize =
@@ -107,7 +111,7 @@ export default class GnomeMagicLampExtension extends Extension {
   _connectWindowSignals() {
     this._minimizeId = global.window_manager.connect('minimize', (e, actor) => {
       if (Main.overview.visible) {
-        Main.wm._shellwm.original_completed_minimize(actor);
+        Main.wm._shellwm.original_completed_minimize?.(actor);
         return;
       }
 
@@ -128,7 +132,7 @@ export default class GnomeMagicLampExtension extends Extension {
         actor.show();
 
         if (Main.overview.visible) {
-          Main.wm._shellwm.original_completed_unminimize(actor);
+          Main.wm._shellwm.original_completed_unminimize?.(actor);
           return;
         }
 
@@ -158,16 +162,52 @@ export default class GnomeMagicLampExtension extends Extension {
   }
 
   _getIcon(actor) {
-    const [hasIcon, icon] = actor.meta_window.get_icon_geometry();
-    if (hasIcon) return icon;
+    if (!actor?.meta_window) {
+      logger.log(
+        this.ENABLE_LOGGING,
+        '[getIcon] Resolved default immediately, no meta window available'
+      );
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
 
+    const windowTitle = actor.meta_window.get_title() || 'Unknown Window';
+
+    // Try live dash lookup first (forces redisplay to calculate positions outside overview)
+    const dashIcon = this._findDashIconForActor(actor);
+    if (dashIcon) {
+      logger.log(
+        this.ENABLE_LOGGING,
+        `[getIcon] "${windowTitle}" Resolved via live dash: x=${dashIcon.x}, y=${dashIcon.y}`
+      );
+      return dashIcon;
+    }
+
+    // Fall back to native window manager icon geometry
+    const [hasIcon, icon] = actor.meta_window.get_icon_geometry();
+    if (hasIcon && icon.width > 0 && icon.height > 0) {
+      logger.log(
+        this.ENABLE_LOGGING,
+        `[getIcon] "${windowTitle}" Resolved via window manager icon geometry`
+      );
+      return icon;
+    }
+
+    // Try calculating positions based on monitor
     const monitor =
       Main.layoutManager.monitors[actor.meta_window.get_monitor()];
-    if (!monitor) return { x: 0, y: 0, width: 0, height: 0 };
+    if (!monitor) {
+      logger.log(
+        this.ENABLE_LOGGING,
+        `[getIcon] "${windowTitle}" Falling back to non-monitor default`
+      );
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
 
-    const dashIcon = this._findDashIconForActor(actor, monitor);
-    if (dashIcon) return dashIcon;
-
+    // Safe monitor bottom-center fallback
+    logger.log(
+      this.ENABLE_LOGGING,
+      `[getIcon] "${windowTitle}" Falling back to monitor bottom-center`
+    );
     return {
       x: monitor.x + monitor.width / 2,
       y: monitor.y + monitor.height,
@@ -176,23 +216,36 @@ export default class GnomeMagicLampExtension extends Extension {
     };
   }
 
-  _findDashIconForActor(actor, monitor) {
-    const pid = actor.meta_window?.get_pid();
-    if (!pid || !Main.overview.dash) return null;
+  _findDashIconForActor(actor) {
+    if (!Main.overview.dash?._box) return null;
 
-    Main.overview.dash._redisplay();
+    Main.overview.dash._redisplay?.();
+
+    const windowApp = Shell.WindowTracker.get_default()?.get_window_app(
+      actor.meta_window
+    );
+    const windowAppId = windowApp?.get_id?.();
+    const pid = actor.meta_window?.get_pid();
+    if (!windowAppId && !pid) return null;
 
     const dashChildren = Main.overview.dash._box.get_children() || [];
     for (const dashElement of dashChildren) {
-      if (dashElement?.child?._delegate?.app?.get_pids?.()?.includes(pid)) {
-        const [x] = dashElement.get_transformed_position() || [0];
+      const app =
+        dashElement?._delegate?.app || dashElement?.child?._delegate?.app;
+      const appId = app?.get_id?.();
 
-        return {
-          x,
-          y: monitor.y + monitor.height,
-          width: 0,
-          height: 0,
-        };
+      if (
+        (windowAppId && appId === windowAppId) ||
+        (pid && app?.get_pids?.()?.includes(pid))
+      ) {
+        const pos = dashElement.get_transformed_position();
+        if (Array.isArray(pos) && pos.length >= 2) {
+          const [x, y] = pos;
+          const width = dashElement.get_width?.() || 48;
+          const height = dashElement.get_height?.() || 48;
+
+          return { x, y, width, height };
+        }
       }
     }
 
