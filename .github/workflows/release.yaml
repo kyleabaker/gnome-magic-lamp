@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '26'
           cache: 'npm'
 
       - name: Install System Dependencies
@@ -27,7 +27,7 @@ jobs:
           sudo apt-get install -y jq glib2.0-dev zip gnome-shell
 
       - name: Install NPM Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Check Code Formatting (Lint)
         run: npx prettier --check '**/*.{js,ts,xml,html,json,css,scss,yaml,yml,md}'
@@ -45,7 +45,7 @@ jobs:
 
       - name: Create GitHub Release
         id: create_release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/${{ steps.meta.outputs.uuid }}.zip
           name: Release ${{ github.ref_name }} (v${{ steps.meta.outputs.version }})
