@@ -24,5 +24,7 @@
 'use strict';
 
 export function easeOutCubic(t, isEnabled) {
-  return isEnabled ? 1 - Math.pow(1 - t, 3) : t;
+  if (!isEnabled) return t;
+  const inv = 1 - t;
+  return 1 - inv * inv * inv;
 }

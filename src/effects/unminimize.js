@@ -43,6 +43,7 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
 
   /**
    * Initializes the unminimize effect.
+   *
    * @param {Object} [params={}] - Parameters for initialization.
    */
   _init(params = {}) {
@@ -51,17 +52,19 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
     this.k = 1;
     this.j = 1;
     this.isMinimizeEffect = false;
-
-    this.lastRedraw = 0;
-    this.MIN_FRAME_INTERVAL = 8; // ~120fps
   }
 
   /**
    * Called when the effect animation completes.
    * Restores original GNOME Shell behavior.
+   *
    * @param {Clutter.Actor} actor - The affected actor.
    */
   destroy_actor(actor) {
+    if (actor?.meta_window && !!actor.meta_window.minimized) {
+      actor.meta_window.unminimize();
+    }
+
     if (Main.wm?._shellwm?.original_completed_unminimize) {
       Main.wm._shellwm.original_completed_unminimize(actor);
     }
@@ -70,6 +73,7 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
   /**
    * Called on each frame of the animation timeline.
    * Updates the deformation parameters and redraws the actor.
+   *
    * @param {Clutter.Timeline} timer - Timeline instance.
    * @param {number} msecs - Milliseconds elapsed.
    */
@@ -98,16 +102,13 @@ export class MagicLampUnminimizeEffect extends AbstractCommonMagicLampEffect {
         ? easeOutCubic(this.progress / splitPoint, this.EASE_OUT)
         : 1);
 
-    const now = Date.now();
-    if (now - this.lastRedraw >= this.MIN_FRAME_INTERVAL) {
-      this.actor?.get_parent?.()?.queue_redraw?.();
-      this.lastRedraw = now;
-    }
+    this.actor?.get_parent?.()?.queue_redraw?.();
     this.invalidate();
   }
 
   /**
    * Disables default paint volume modification to avoid culling issues.
+   *
    * @param {Clutter.PaintVolume} pv - Paint volume.
    * @returns {boolean} Always returns false.
    */

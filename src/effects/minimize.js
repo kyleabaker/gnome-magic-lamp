@@ -43,6 +43,7 @@ export class MagicLampMinimizeEffect extends AbstractCommonMagicLampEffect {
 
   /**
    * Initializes the minimize effect.
+   *
    * @param {Object} [params={}] - Optional parameters.
    */
   _init(params = {}) {
@@ -51,14 +52,12 @@ export class MagicLampMinimizeEffect extends AbstractCommonMagicLampEffect {
     this.k = 0;
     this.j = 0;
     this.isMinimizeEffect = true;
-
-    this.lastRedraw = 0;
-    this.MIN_FRAME_INTERVAL = 8; // ~120fps
   }
 
   /**
    * Called when the effect animation completes.
    * Restores original GNOME Shell behavior for minimize.
+   *
    * @param {Clutter.Actor} actor - The affected actor.
    */
   destroy_actor(actor) {
@@ -70,6 +69,7 @@ export class MagicLampMinimizeEffect extends AbstractCommonMagicLampEffect {
   /**
    * Called on each frame of the animation timeline.
    * Updates the deformation parameters and triggers redraw.
+   *
    * @param {Clutter.Timeline} timer - Timeline instance.
    * @param {number} msecs - Milliseconds elapsed.
    */
@@ -95,16 +95,13 @@ export class MagicLampMinimizeEffect extends AbstractCommonMagicLampEffect {
           )
         : 0;
 
-    const now = Date.now();
-    if (now - this.lastRedraw >= this.MIN_FRAME_INTERVAL) {
-      this.actor?.get_parent?.()?.queue_redraw?.();
-      this.lastRedraw = now;
-    }
+    this.actor?.get_parent?.()?.queue_redraw?.();
     this.invalidate();
   }
 
   /**
    * Disables default paint volume modification to avoid culling issues.
+   *
    * @param {Clutter.PaintVolume} pv - Paint volume.
    * @returns {boolean} Always returns false.
    */

@@ -66,6 +66,8 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     this.timerId = null;
     this.iconPosition = null;
     this.toTheBorder = true;
+    this._deformSide = null;
+    this._originalParent = null;
 
     this.EPSILON = 40;
 
@@ -84,14 +86,24 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
   }
 
   vfunc_set_actor(actor) {
+    if (!actor) {
+      this.destroy();
+      super.vfunc_set_actor(actor);
+      return;
+    }
+
     super.vfunc_set_actor(actor);
 
-    if (!actor || this.initialized) return;
-
+    if (this.initialized) return;
     this.initialized = true;
-    const monitorIndex = actor.meta_window.get_monitor();
-    this.monitor = Main.layoutManager.monitors[monitorIndex];
 
+    const monitorIndex = actor?.meta_window?.get_monitor?.() ?? 0;
+    this.monitor =
+      Main.layoutManager.monitors[monitorIndex] ||
+      Main.layoutManager.primaryMonitor ||
+      Main.layoutManager.monitors[0];
+
+    // Read geometry BEFORE re-parenting
     [this.window.x, this.window.y] = [
       actor.get_x() - this.monitor.x,
       actor.get_y() - this.monitor.y,
@@ -100,6 +112,13 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
 
     this._initializeIconPosition();
     this.set_n_tiles(this.X_TILES, this.Y_TILES);
+
+    // Re-parent to Main.uiGroup to escape monitor clipping bounds
+    this._originalParent = actor.get_parent();
+    if (this._originalParent && this._originalParent !== Main.uiGroup) {
+      this._originalParent.remove_child(actor);
+      Main.uiGroup.add_child(actor);
+    }
 
     // Scale factor helps avoid crazy-fast durations for small windows and slow for big ones for a more consistent perception.
     const scaleFactor = Math.max(
@@ -125,6 +144,12 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
       this.destroy.bind(this)
     );
     this.timerId.start();
+
+    // Safely abort/destroy animation if monitor layout changes mid-flight
+    this._monitorsChangedId = Main.layoutManager.connect(
+      'monitors-changed',
+      () => this.destroy()
+    );
 
     logger.log(this.ENABLE_LOGGING, 'Extension initialized.');
   }
@@ -200,19 +225,49 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
     ) {
       this.iconPosition = St.Side.RIGHT;
     }
+
+    // Cache the appropriate deformation function pointer to eliminate per-vertex branching
+    switch (this.iconPosition) {
+      case St.Side.LEFT:
+        this._deformSide = this._deformLeft;
+        break;
+      case St.Side.TOP:
+        this._deformSide = this._deformTop;
+        break;
+      case St.Side.RIGHT:
+        this._deformSide = this._deformRight;
+        break;
+      case St.Side.BOTTOM:
+        this._deformSide = this._deformBottom;
+        break;
+      default:
+        this._deformSide = null;
+        break;
+    }
   }
 
   destroy() {
+    if (this._isDestroying) return;
+    this._isDestroying = true;
+
+    if (this._monitorsChangedId) {
+      Main.layoutManager.disconnect(this._monitorsChangedId);
+      this._monitorsChangedId = null;
+    }
+
     if (this.timerId) {
+      this.timerId.stop(); // Ensure timeline halts immediately
+      const timer = this.timerId;
+      this.timerId = null;
+
       if (this.newFrameEvent) {
-        this.timerId.disconnect(this.newFrameEvent);
+        timer.disconnect(this.newFrameEvent);
         this.newFrameEvent = null;
       }
       if (this.completedEvent) {
-        this.timerId.disconnect(this.completedEvent);
+        timer.disconnect(this.completedEvent);
         this.completedEvent = null;
       }
-      this.timerId = null;
     }
 
     const actor = this.get_actor();
@@ -221,6 +276,26 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
         actor.disconnect(this.paintEvent);
         this.paintEvent = null;
       }
+
+      // Restore original parent safely before removing the effect
+      if (this._originalParent && this._originalParent !== Main.uiGroup) {
+        if (
+          actor.get_parent() === Main.uiGroup &&
+          typeof this._originalParent.add_child === 'function'
+        ) {
+          try {
+            Main.uiGroup.remove_child(actor);
+            this._originalParent.add_child(actor);
+          } catch (e) {
+            logger.log(
+              this.ENABLE_LOGGING,
+              `[destroy] Failed to restore original parent: ${e.message}`
+            );
+          }
+        }
+        this._originalParent = null;
+      }
+
       actor.remove_effect(this);
       this.destroy_actor(actor);
     }
@@ -232,32 +307,19 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
   on_tick_elapsed(_timer, _msecs) {} // NOSONAR
 
   vfunc_deform_vertex(w, h, v) {
-    if (!this.initialized) return;
-
-    const propX = w / this.window.width;
-    const propY = h / this.window.height;
-
-    const { x, y } = this._deformBySide(v);
-    v.x = x * propX;
-    v.y = y * propY;
-  }
-
-  _deformBySide(v) {
-    switch (this.iconPosition) {
-      case St.Side.LEFT:
-        return this._deformLeft(v);
-      case St.Side.TOP:
-        return this._deformTop(v);
-      case St.Side.RIGHT:
-        return this._deformRight(v);
-      case St.Side.BOTTOM:
-        return this._deformBottom(v);
-      default:
-        return { x: 0, y: 0 };
+    if (
+      !this.initialized ||
+      !this._deformSide ||
+      this.window.width <= 0 ||
+      this.window.height <= 0
+    ) {
+      return;
     }
+
+    this._deformSide(v, w / this.window.width, h / this.window.height);
   }
 
-  _deformLeft(v) {
+  _deformLeft(v, propX, propY) {
     const width = this.window.width - this.icon.width + this.window.x * this.k;
     const x = (width - this.j * width) * v.tx;
     const y =
@@ -278,10 +340,11 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
             7) *
           this.k;
 
-    return { x: x + offsetX, y: y + offsetY + effectY };
+    v.x = (x + offsetX) * propX;
+    v.y = (y + offsetY + effectY) * propY;
   }
 
-  _deformTop(v) {
+  _deformTop(v, propX, propY) {
     const height =
       this.window.height - this.icon.height + this.window.y * this.k;
     const y = (height - this.j * height) * v.ty;
@@ -303,10 +366,11 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
             7) *
           this.k;
 
-    return { x: x + offsetX + effectX, y: y + offsetY };
+    v.x = (x + offsetX + effectX) * propX;
+    v.y = (y + offsetY) * propY;
   }
 
-  _deformRight(v) {
+  _deformRight(v, propX, propY) {
     const expandWidth =
       this.iconMonitor.width -
       this.icon.width -
@@ -350,10 +414,11 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
             7) *
           this.k;
 
-    return { x: x + offsetX, y: y + offsetY + effectY };
+    v.x = (x + offsetX) * propX;
+    v.y = (y + offsetY + effectY) * propY;
   }
 
-  _deformBottom(v) {
+  _deformBottom(v, propX, propY) {
     const expandHeight =
       this.iconMonitor.height -
       this.icon.height -
@@ -394,6 +459,7 @@ export class AbstractCommonMagicLampEffect extends Clutter.DeformEffect {
             7) *
           this.k;
 
-    return { x: x + offsetX + effectX, y: y + offsetY };
+    v.x = (x + offsetX + effectX) * propX;
+    v.y = (y + offsetY) * propY;
   }
 }
